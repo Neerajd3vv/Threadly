@@ -4,6 +4,7 @@ import { validationParser } from "../utils/validationParser"
 import { userSchema } from "../validations/userSchema"
 import { Request, Response } from "express"
 import bcrypt from "bcryptjs"
+import { loginSchema } from "../validations/loginSchema"
 
 export const signup = async (req: Request, res: Response) => {
 
@@ -26,11 +27,63 @@ export const signup = async (req: Request, res: Response) => {
 
         return res.status(201).json({
             success: true,
-            user
+            message: "User created successfuly"
         });
 
     } catch (error) {
         console.error("[POST /api/auth/signup] Error:", error);
+        return res.status(500).json({ error: "Something went wrong" });
+    }
+}
+
+
+
+
+export const signin = async (req: Request, res: Response) => {
+
+    try {
+
+        const parsed = validationParser(loginSchema, req.body)
+
+        if (!parsed.success || !parsed.data) {
+            return res.status(400).json({ error: "ValidationFailed", details: parsed.errors })
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { email: parsed.data.email }
+        });
+
+
+
+        if (!user) {
+            return res.status(404).json({ success: false, error: "No user with such email exists" })
+        }
+
+
+        const comparePass = await bcrypt.compare(parsed.data.password, user.password)
+
+
+        if (!comparePass) {
+            return res.status(401).json({
+                success: false,
+                error: "password"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "User found!",
+            user: {
+                firstname: user.firstname,
+                lastname: user.lastname,
+                email: user.email,
+
+            }
+        });
+
+
+    } catch (error) {
+        console.error("[POST /api/user/signin] Error:", error);
         return res.status(500).json({ error: "Something went wrong" });
     }
 }
