@@ -1,6 +1,9 @@
 # Node.js dependencies
 node_modules/
 
+# Ignore generated Prisma client
+backend/src/generated/
+
 
 # Environment variables
 .env
