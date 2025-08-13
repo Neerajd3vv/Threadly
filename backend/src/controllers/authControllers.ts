@@ -78,6 +78,7 @@ export const signin = async (req: Request, res: Response) => {
             success: true,
             message: "User found!",
             user: {
+                id: user.id,
                 firstname: user.firstname,
                 lastname: user.lastname,
                 email: user.email,

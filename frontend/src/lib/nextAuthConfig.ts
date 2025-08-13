@@ -1,9 +1,10 @@
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { NextAuthOptions } from "next-auth";
 
 import axios from "axios";
 
-export const nextAuthConfig = {
+export const nextAuthConfig: NextAuthOptions = {
     providers: [
         CredentialsProvider({
             name: "Credentials",
@@ -58,5 +59,41 @@ export const nextAuthConfig = {
     secret: process.env.NEXTAUTH_SECRET,
     pages: {
         signIn: "/signin"
+    },
+
+    callbacks: {
+        async jwt({ user, token }) {
+            if (user) {
+                token.id = user.id;
+                token.email = user.email;
+                token.firstname = user.firstname;
+            }
+            return token
+        },
+        async session({ token, session }) {
+            if (session && session.user) {
+                session.user.id = token.id as string | undefined | null;
+                session.user.firstname = token.firstname as string | undefined | null;
+                session.user.email = token.email as string | undefined | null;
+            }
+            return session
+        }
     }
 }
+
+
+// need to extend nextuth types as extAuth’s default User and Session["user"] types do not include your custom fields like id or firstname.
+declare module "next-auth" {
+    interface Session {
+        user: {
+            id: string | undefined | null;
+            firstname: string | undefined | null;
+            email: string | undefined | null;
+        };
+    }
+    interface User {
+        id: string | undefined | null;
+        firstname: string | undefined | null;
+    }
+}
+
