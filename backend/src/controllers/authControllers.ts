@@ -8,6 +8,7 @@ import { loginSchema } from "../validations/loginSchema"
 
 export const signup = async (req: Request, res: Response) => {
 
+
     try {
 
         const parsed = validationParser(userSchema, req.body)
@@ -16,7 +17,7 @@ export const signup = async (req: Request, res: Response) => {
         }
 
         const hashedPass = await bcrypt.hash(parsed.data.password, 10)
-        const user = await prisma.user.create({
+        await prisma.user.create({
             data: {
                 firstname: parsed.data.firstname,
                 lastname: parsed.data.lastname,
@@ -38,7 +39,6 @@ export const signup = async (req: Request, res: Response) => {
 
 
 
-
 export const signin = async (req: Request, res: Response) => {
 
     try {
@@ -56,7 +56,9 @@ export const signin = async (req: Request, res: Response) => {
 
 
         if (!user) {
-            return res.status(404).json({ success: false, error: "No user with such email exists" })
+            return res.status(404).json({
+                success: false, error: "User not found!", errorCode: "EMAIL_NOT_FOUND"
+            })
         }
 
 
@@ -66,7 +68,9 @@ export const signin = async (req: Request, res: Response) => {
         if (!comparePass) {
             return res.status(401).json({
                 success: false,
-                error: "password"
+                error: "password is incorrect",
+                errorCode: "INVALID_PASSWORD"
+
             });
         }
 
