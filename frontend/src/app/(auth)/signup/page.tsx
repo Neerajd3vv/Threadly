@@ -29,7 +29,7 @@ export default function SignUpForm() {
     };
 
 
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<SignupFormData>({
+    const { register, setError, handleSubmit, formState: { errors, isSubmitting } } = useForm<SignupFormData>({
         resolver: zodResolver(signupSchema),
         defaultValues: {
             firstname: "",
@@ -57,10 +57,9 @@ export default function SignUpForm() {
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 console.log(error.response?.data.error);
-
+                setError("email", { type: "manual", message: error.response?.data.error })
+                toast.error(error.response?.data.errorCode)
             }
-            console.log("Something went wrong", error);
-            toast.error("Something went wrong!")
         }
     };
 

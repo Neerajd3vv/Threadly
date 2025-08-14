@@ -62,11 +62,37 @@ export const nextAuthConfig: NextAuthOptions = {
     },
 
     callbacks: {
+
+        async signIn({ user, account }) {
+            if (account?.provider === "google") {
+                try {
+                    await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/auth/googleSignin`, {
+                        firstname: user.name?.split(" ")[0] || "",
+                        lastname: user.name?.split(" ")[1] || "",
+                        email: user.email,
+                        imgUrl: user.image,
+                    })
+
+                } catch (error) {
+                    if (axios.isAxiosError(error)) {
+                        console.log(error.response?.data.error);
+                    } else {
+                        console.error("Error saving Google user:", error);
+                    }
+                    return false;
+                }
+            }
+            return true;
+        },
+
         async jwt({ user, token }) {
+
             if (user) {
                 token.id = user.id;
                 token.email = user.email;
                 token.firstname = user.firstname;
+                token.lastname = user.firstname;
+                token.imgUrl = user.imgUrl;
             }
             return token
         },
@@ -74,7 +100,9 @@ export const nextAuthConfig: NextAuthOptions = {
             if (session && session.user) {
                 session.user.id = token.id as string | undefined | null;
                 session.user.firstname = token.firstname as string | undefined | null;
+                session.user.lastname = token.lastname as string | undefined | null;
                 session.user.email = token.email as string | undefined | null;
+                session.user.imgUrl = token.imgUrl as string | undefined | null;
             }
             return session
         }
@@ -88,12 +116,16 @@ declare module "next-auth" {
         user: {
             id: string | undefined | null;
             firstname: string | undefined | null;
+            lastname: string | undefined | null;
             email: string | undefined | null;
+            imgUrl: string | undefined | null;
         };
     }
     interface User {
         id: string | undefined | null;
         firstname: string | undefined | null;
+        lastname: string | undefined | null;
+        imgUrl: string | undefined | null;
     }
 }
 

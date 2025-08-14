@@ -1,1 +1,1 @@
-{"root":["./src/app.ts","./src/server.ts"],"version":"5.7.3"}
+{"root":["./src/app.ts","./src/server.ts","./src/controllers/authcontrollers.ts","./src/controllers/usercontrollers.ts","./src/routes/authroutes.ts","./src/routes/userroutes.ts","./src/utils/validationparser.ts","./src/validations/googlesigninschema.ts","./src/validations/loginschema.ts","./src/validations/userschema.ts"],"version":"5.7.3"}
