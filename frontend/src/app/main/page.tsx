@@ -24,7 +24,7 @@ function Main() {
     const [isUploaded, setIsUploaded] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
 
-    const [fileName, setFileName] = useState<string | null>(null)
+    // const [fileName, setFileName] = useState<string | null>(null)
 
     // const [isDarkMode, setIsDarkMode] = useState(true)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -43,10 +43,9 @@ function Main() {
         if (!file) return;
         const result = resumeSchema.safeParse(file)
         if (result.success) {
-            console.log("file", file);
 
         } else {
-            setError(result.error.message)
+            setError(result.error.issues[0].message)
         }
         setUploadedFile(file)
 
@@ -118,16 +117,59 @@ function Main() {
 
             if (response.data.success) {
                 const { signedUrl, fileName } = response.data;
-                await fetch(signedUrl, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": uploadedFile?.type || "application/pdf",
+                // await fetch(signedUrl, {
+                //     method: "PUT",
+                //     headers: {
+                //         "Content-Type": uploadedFile?.type || "application/pdf",
 
-                    },
-                    body: uploadedFile,
-                });
-                setIsUploaded(true)
-                setFileName(fileName)
+                //     },
+                //     body: uploadedFile,
+                // });
+                await axios.put(signedUrl, uploadedFile, {
+                    headers: {
+                        "Content-Type": uploadedFile?.type || "applicaiton/pdf"
+                    }
+                })
+
+                /// inner
+
+                try {
+                    const payload = {
+                        jd: jobDescription,
+                        fileName,
+                    };
+
+                    const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/jd`, payload, {
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${session?.user.accessToken}`
+                        },
+                    });
+
+                    if (response.data.success) {
+                        console.log("✅ Saved successfully:", response.data.message);
+
+                        setIsUploaded(true)
+                    } else {
+                        console.error("⚠️ Error:", response.data.error);
+                    }
+                } catch (error) {
+                    if (axios.isAxiosError(error)) {
+                        console.log("error", error);
+
+                        const message = error.response?.data.error
+                        console.log("message", message);
+
+                        // setUploadError(message)
+                    }
+                    console.log("Upload failure :", error);
+                }
+
+
+
+
+
+                // setFileName(fileName)
             }
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -144,11 +186,10 @@ function Main() {
 
 
 
-    const handleAnalyze = () => {
-        // todo : add resume filename and jd to the db, if user is login , otherwise pro
-        //  jobDescription, fileName
 
-    }
+    const handleAnalyze = async () => {
+
+    };
 
 
 
