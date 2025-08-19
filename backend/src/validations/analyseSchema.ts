@@ -9,5 +9,5 @@ export const analyseSchema = z.object({
         })
         .refine((file) => ["application/pdf"].includes(file.type), {
             message: "Only PDF files are allowed.",
-        });
+        })
 }) 
