@@ -5,12 +5,26 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
 import { resumeSchema } from "@/validations/resumeUpload"
+import { TbRefresh } from "react-icons/tb";
+import { useSession } from "next-auth/react"
+import axios from "axios"
+import { toast } from "sonner"
 
 function Main() {
     const [jobDescription, setJobDescription] = useState("")
     const [uploadedFile, setUploadedFile] = useState<File | null>(null)
     const [isDragging, setIsDragging] = useState(false)
     const [error, setError] = useState<string | null>(null);
+
+    const { data: session } = useSession()
+
+
+    // resume upload states
+    const [isUploading, setIsUploading] = useState(false)
+    const [isUploaded, setIsUploaded] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
+
+    const [fileName, setFileName] = useState<string | null>(null)
 
     // const [isDarkMode, setIsDarkMode] = useState(true)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -66,14 +80,73 @@ function Main() {
 
     const removeFile = () => {
         setUploadedFile(null)
+        setIsUploaded(false)
+        setUploadError(null)
+        setIsUploading(false)
+        setError(null)
+
         if (fileInputRef.current) {
             fileInputRef.current.value = ""
         }
     }
 
+    const handleUpload = async (fileName: string, fileType: string) => {
+        if (jobDescription.trim().split(/\s+/).length < 200) {
+            toast.custom(() => (
+                <div
+                    className="max-w-md w-full rounded-xl shadow-lg 
+      backdrop-blur-md bg-gradient-to-tr from-[#000000] via-indigo-900/10 to-zinc-900/5 
+      border border-white/10 text-white px-4 py-3"
+                >
+                    <p className="text-sm font-medium">
+                        ⚠️ Please provide JD with minimum of 200 words!
+                    </p>
+                </div>
+            ), { duration: 4000 }) // optional auto-dismiss
+            return
+        }
+        setIsUploading(true)
+        try {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/upload/resume`, {
+                fileName,
+                fileType
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${session?.user.accessToken}`
+                }
+            })
+
+            if (response.data.success) {
+                const { signedUrl, fileName } = response.data;
+                await fetch(signedUrl, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": uploadedFile?.type || "application/pdf",
+
+                    },
+                    body: uploadedFile,
+                });
+                setIsUploaded(true)
+                setFileName(fileName)
+            }
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.log("error", error);
+
+                const message = error.response?.data.error
+                setUploadError(message)
+            }
+            console.log("Upload failure :", error);
+        } finally {
+            setIsUploading(false)
+        }
+    }
+
+
+
     const handleAnalyze = () => {
         // todo : add resume filename and jd to the db, if user is login , otherwise pro
-
+        //  jobDescription, fileName
 
     }
 
@@ -82,7 +155,7 @@ function Main() {
     return (
         <div className="min-h-screen bg-gradient-to-bl from-[#000000]  via-[#000814] to-[#000000] relative overflow-hidden">
 
-            <div className="relative z-10 container mx-auto px-4 py-8">
+            <div className="relative  z-10 container mx-auto px-4 py-8">
                 <div className="max-w-3xl mx-auto space-y-8">
                     <div className="text-center space-y-4">
                         {/* <button
@@ -144,16 +217,20 @@ function Main() {
                             <div className="relative">
                                 <Textarea
                                     onChange={(e) => {
-                                        setJobDescription(e.target.value)
+                                        const wordsCount = e.target.value.trim() === "" ? 0 : e.target.value.trim().split(/\s+/).length
+
+                                        if (wordsCount <= 1000) {
+                                            setJobDescription(e.target.value)
+                                        }
+
                                     }}
-                                    maxLength={5000}
                                     className="w-full max-h-70 bg-transparent backdrop-blur-xl border border-white/20 rounded-lg px-4 py-3 text-stone-200 placeholder-stone resize-none transition-all duration-300 text-sm shadow-inner custom-scrollbar"
 
                                 />
 
                                 {/* Counter */}
                                 <div className="absolute bottom-2 right-2 text-xs text-stone-400 bg-black/40 backdrop-blur-md rounded px-2 py-1 border border-white/10">
-                                    {jobDescription.length}/5000
+                                    {jobDescription.trim() === "" ? 0 : jobDescription.trim().split(/\s+/).length}/1000
                                 </div>
                             </div>
                         </div>
@@ -173,6 +250,7 @@ function Main() {
                                     Resume Upload
                                 </h2>
                                 {error && <p className="text-red-400 text-sm ">{error}</p>}
+                                {uploadError && <p className="text-red-400 text-sm ">{uploadError}</p>}
                             </div>
 
                             {/* Dropzone */}
@@ -228,7 +306,7 @@ function Main() {
 
 
                                         {/* File Type Info */}
-                                        <p className="text-xs text-stone-500 mt-2">PDF, DOC, DOCX (Max 10MB)</p>
+                                        <p className="text-xs text-stone-500 mt-2">Only PDF (Max 2MB)</p>
                                     </div>
 
                                 </div>
@@ -239,7 +317,17 @@ function Main() {
                                         {/* Left Section */}
                                         <div className="flex items-center gap-3 min-w-0 flex-1">
                                             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-400/20 via-green-300/15 to-teal-400/12 backdrop-blur-xl rounded-lg flex items-center justify-center border border-emerald-400/30 shrink-0">
-                                                <CheckCircle className=" h-4 w-4 sm:w-5 sm:h-5 text-emerald-300" />
+                                                {isUploaded ? (
+                                                    <CheckCircle className="h-4 w-4 sm:w-5 sm:h-5 text-emerald-300" />
+                                                ) : isUploading ? (
+                                                    <div className="flex space-x-1">
+                                                        <span className="w-1 h-1 bg-emerald-300 rounded-full animate-bounce"></span>
+                                                        <span className="w-1 h-1 bg-emerald-300 rounded-full animate-bounce200"></span>
+                                                        <span className="w-1 h-1 bg-emerald-300 rounded-full animate-bounce400"></span>
+                                                    </div>
+                                                ) : (
+                                                    <ArrowUpCircle className="h-4 w-4 text-emerald-300" />
+                                                )}
                                             </div>
                                             <div className="min-w-0">
                                                 <h4 className="text-stone-200 font-medium text-sm truncate max-w-[180px] sm:max-w-full">
@@ -255,36 +343,64 @@ function Main() {
 
                                         {/* Right Section - Action buttons */}
                                         <div className="flex items-center gap-2 shrink-0">
-                                            {/* Upload button */}
-                                            {!error && (
-                                                <Button
-                                                    className="inline-flex h-8 items-center gap-2 px-3 py-2 
-                                                bg-gradient-to-r from-emerald-500/20 via-green-400/15 to-emerald-400/12
-                                                backdrop-blur-xl rounded-md border border-emerald-400/30
-                                                text-emerald-300 text-sm font-medium
-                                                hover:from-emerald-500/30 hover:via-green-400/25 hover:to-emerald-400/20
-                                                hover:scale-105 hover:shadow-[0_0_10px_rgba(16,185,129,0.4)]
-                                                transition-all duration-300 cursor-pointer"
-                                                >
-                                                    <ArrowUpCircle className="w-4 h-4" />
-                                                    Upload
-                                                </Button>
-                                            )}
+                                            {/* Upload / Uploaded / Retry Button */}
+                                            {
+                                                !error && (
+                                                    <Button
+                                                        onClick={() => {
+                                                            if (!isUploaded) handleUpload(uploadedFile.name, uploadedFile.type)
+                                                        }}
+                                                        disabled={isUploading || isUploaded}
+                                                        className={`inline-flex w-28 h-8 items-center gap-2 px-3 py-2
+                                                        bg-gradient-to-tr from-[#000000] via-indigo-900/10 to-zinc-900/5 
+                                                        backdrop-blur-xl rounded-md border border-white/20
+                                                        text-emerald-300 text-sm font-medium
+                                                        transition-all duration-300 ease-in-out
+                                                        hover:from-emerald-900/30 hover:via-indigo-800/20 hover:to-zinc-800/10
+                                                        hover:text-emerald-200 hover:shadow-lg cursor-pointer
+                                                ${isUploading || isUploaded ? 'opacity-70 cursor-not-allowed' : ''}
+        `}
+                                                    >
+                                                        {isUploading ? (
+                                                            <div className="flex space-x-2 items-center">
+                                                                {[0, 1, 2].map((i) => (
+                                                                    <span
+                                                                        key={i}
+                                                                        className="w-2 h-2 bg-white rounded-full animate-pulse"
+                                                                        style={{ animationDelay: `${i * 0.5}s` }}
+                                                                    ></span>
+                                                                ))}
+                                                            </div>
+
+
+                                                        ) : isUploaded ? (
+                                                            <>
+                                                                <CheckCircle className="w-4 h-4" />
+                                                                Uploaded
+                                                            </>
+                                                        ) : uploadError ? (
+                                                            <>
+                                                                <TbRefresh className="w-4 h-4" />
+                                                                Retry
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <ArrowUpCircle className="w-4 h-4" />
+                                                                Upload
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                )
+                                            }
 
 
                                             {/* Remove button */}
-                                            <Button
-                                                onClick={removeFile}
-                                                className="w-8 h-8 bg-gradient-to-br from-red-500/20 via-rose-400/15 to-red-400/12 backdrop-blur-xl 
-                                                hover:from-red-500/30 hover:via-rose-400/25 hover:to-red-400/20 
-                                                rounded-md flex items-center justify-center transition-all duration-300 
-                                                border border-red-400/30 hover:scale-105 cursor-pointer"
-                                            >
-                                                <X className="w-4 h-4 text-red-300" />
-                                            </Button>
+
+                                            <X onClick={removeFile} className="w-5 h-5 cursor-pointer text-gray-100 hover:text-white hover:scale-125 transition-all duration-300" />
                                         </div>
                                     </div>
                                 </div>
+
 
 
                             )}
@@ -294,6 +410,7 @@ function Main() {
 
                     <div className="text-center pt-4">
                         <Button
+                            disabled={!isUploaded}
                             size="xl"
                             onClick={handleAnalyze}
                             className="relative cursor-pointer overflow-hidden rounded-lg
@@ -313,11 +430,17 @@ function Main() {
                         </Button>
 
 
-                        <p className="text-stone-400 text-xs mt-3">Ready to analyze your resume</p>
+                        {!isUploaded ? (
+                            <p className="text-stone-400 text-xs mt-3">
+                                Upload resume first
+                            </p>
+                        ) : (
+                            <p className="text-stone-400 text-xs mt-3">Ready to analyze your resume</p>
+                        )}
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }
 

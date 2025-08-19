@@ -2,6 +2,7 @@ import { bucket } from "../utils/gcpStorage";
 import path from "path"
 import { Request, Response } from "express"
 
+
 export async function resumeUpload(req: Request, res: Response) {
     try {
         const fileName = req.body.fileName as string;
@@ -19,12 +20,13 @@ export async function resumeUpload(req: Request, res: Response) {
         const file = bucket.file(finalFileName)
         const [url] = await file.getSignedUrl({
             action: "write",
-            expires: Date.now() + 1 * 60 * 1000
+            expires: Date.now() + 1 * 60 * 1000,
+            contentType: fileType as string
         })
 
         return res.status(200).json({
             success: true,
-            signerUrl: url,
+            signedUrl: url,
             fileName: finalFileName
         });
 

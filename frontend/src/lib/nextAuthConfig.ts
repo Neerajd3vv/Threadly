@@ -22,9 +22,17 @@ export const nextAuthConfig: NextAuthOptions = {
                     })
                     console.log("response", response);
 
+                    console.log("user-data", response.data.user);
 
                     if (response.data?.success) {
-                        return response.data.user;
+                        return {
+                            id: response.data.user.id,
+                            firstname: response.data.user.firstname,
+                            lastname: response.data.user.lastname,
+                            email: response.data.user.email,
+                            imgUrl: response.data.user.imgUrl,
+                            accessToken: response.data.accessToken
+                        }
                     }
 
                     throw new Error(JSON.stringify({
@@ -85,7 +93,8 @@ export const nextAuthConfig: NextAuthOptions = {
             return true;
         },
 
-        async jwt({ user, token }) {
+        async jwt({ user, token, account }) {
+
 
             if (user) {
                 token.id = user.id;
@@ -93,7 +102,15 @@ export const nextAuthConfig: NextAuthOptions = {
                 token.firstname = user.firstname;
                 token.lastname = user.firstname;
                 token.imgUrl = user.imgUrl;
+
+                if (user.accessToken) {
+                    token.accessToken = user?.accessToken
+                }
+                if (account?.provider === "google") {
+                    token.accessToken = account.access_token
+                }
             }
+
             return token
         },
         async session({ token, session }) {
@@ -103,6 +120,7 @@ export const nextAuthConfig: NextAuthOptions = {
                 session.user.lastname = token.lastname as string | undefined | null;
                 session.user.email = token.email as string | undefined | null;
                 session.user.imgUrl = token.imgUrl as string | undefined | null;
+                session.user.accessToken = token.accessToken as string | undefined | null;
             }
             return session
         }
@@ -119,6 +137,7 @@ declare module "next-auth" {
             lastname: string | undefined | null;
             email: string | undefined | null;
             imgUrl: string | undefined | null;
+            accessToken: string | undefined | null;
         };
     }
     interface User {
@@ -126,6 +145,7 @@ declare module "next-auth" {
         firstname: string | undefined | null;
         lastname: string | undefined | null;
         imgUrl: string | undefined | null;
+        accessToken: string | undefined | null;
     }
 }
 

@@ -14,11 +14,46 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   firstname String
   lastname  String?
-  email     String   @unique
+  email     String     @unique
   password  String?
   imgUrl    String?
-  createdAt DateTime @default(now())
+  jds       Jd[] // one-to-many relations from the users table
+  resumes   Resume[]
+  analyses  Analysis[]
+  createdAt DateTime   @default(now())
+}
+
+model Jd {
+  id          Int        @id @default(autoincrement())
+  description String
+  userId      Int // foreign key : A column in one table that represents a primary key of another table
+  user        User       @relation(fields: [userId], references: [id])
+  analyses    Analysis[]
+  createdAt   DateTime   @default(now())
+}
+
+model Resume {
+  id        Int        @id @default(autoincrement())
+  fileName  String
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id])
+  analyses  Analysis[]
+  createdAt DateTime   @default(now())
+}
+
+model Analysis {
+  id              Int      @id @default(autoincrement())
+  resumeId        Int
+  jdId            Int
+  userId          Int
+  matchScore      Float
+  missingKeywords String[]
+  suggestedEdits  String?
+  resume          Resume   @relation(fields: [resumeId], references: [id])
+  jd              Jd       @relation(fields: [jdId], references: [id])
+  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
 }

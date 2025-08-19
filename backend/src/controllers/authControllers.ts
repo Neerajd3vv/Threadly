@@ -6,6 +6,7 @@ import { Request, Response } from "express"
 import bcrypt from "bcryptjs"
 import { loginSchema } from "../validations/loginSchema"
 import { googleSigninSchema } from "../validations/googleSigninSchema"
+import jwt from "jsonwebtoken"
 
 export const signup = async (req: Request, res: Response) => {
 
@@ -86,6 +87,12 @@ export const signin = async (req: Request, res: Response) => {
 
                 });
             }
+            const accessToken = jwt.sign(
+                { id: user.id, email: user.email },
+                process.env.JWT_SECRET as string,
+            );
+
+
 
             return res.status(200).json({
                 success: true,
@@ -97,7 +104,8 @@ export const signin = async (req: Request, res: Response) => {
                     email: user.email,
                     imgUrl: user.imgUrl
 
-                }
+                },
+                accessToken
             });
         }
 
