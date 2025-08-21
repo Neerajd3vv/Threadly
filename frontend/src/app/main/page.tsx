@@ -1,6 +1,6 @@
 "use client"
 import { useState, useRef } from "react"
-import { Upload, FileText, Sparkles, ChevronRight, X, CheckCircle, FileSearch, Edit3, ArrowUpCircle } from "lucide-react"
+import { Upload, FileText, Sparkles, ChevronRight, X, CheckCircle, FileSearch, Edit3, ArrowUpCircle, Loader2 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
@@ -19,12 +19,16 @@ function Main() {
     const { data: session } = useSession()
 
 
-    // resume upload states
+    // upload states
     const [isUploading, setIsUploading] = useState(false)
     const [isUploaded, setIsUploaded] = useState(false)
-    const [uploadError, setUploadError] = useState<string | null>(null)
 
-    // const [fileName, setFileName] = useState<string | null>(null)
+    const [isAnalysing, setIsAnalysing] = useState(false)
+
+    const [uploadError, setUploadError] = useState<string | null>(null)
+    const [guestSessionId, setGuestSessionId] = useState<string | null>(null)
+
+    const [savedfileName, setSavedFileName] = useState<string | null>(null)
 
     // const [isDarkMode, setIsDarkMode] = useState(true)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -90,105 +94,123 @@ function Main() {
     }
 
     const handleUpload = async (fileName: string, fileType: string) => {
-        if (jobDescription.trim().split(/\s+/).length < 200) {
+        if (jobDescription.trim().split(/\s+/).length < 100) {
             toast.custom(() => (
-                <div
-                    className="max-w-md w-full rounded-xl shadow-lg 
-      backdrop-blur-md bg-gradient-to-tr from-[#000000] via-indigo-900/10 to-zinc-900/5 
-      border border-white/10 text-white px-4 py-3"
-                >
+                <div className="max-w-md w-full rounded-xl shadow-lg backdrop-blur-md 
+                      bg-gradient-to-tr from-[#000000] via-indigo-900/10 to-zinc-900/5 
+                      border border-white/10 text-white px-4 py-3">
                     <p className="text-sm font-medium">
-                        ⚠️ Please provide JD with minimum of 200 words!
+                        ⚠️ Please provide JD with minimum of 100 words!
                     </p>
                 </div>
-            ), { duration: 4000 }) // optional auto-dismiss
-            return
+            ), { duration: 4000 });
+            return;
         }
-        setIsUploading(true)
+
+        setIsUploading(true);
+
         try {
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/upload/resume`, {
-                fileName,
-                fileType
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${session?.user.accessToken}`
-                }
-            })
+            //  Ask backend for signed URL
+            const response = await axios.post(
+                `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/upload/resume`,
+                { fileName, fileType });
 
             if (response.data.success) {
                 const { signedUrl, fileName } = response.data;
-                // await fetch(signedUrl, {
-                //     method: "PUT",
-                //     headers: {
-                //         "Content-Type": uploadedFile?.type || "application/pdf",
 
-                //     },
-                //     body: uploadedFile,
-                // });
+                //  Upload file to GCP
                 await axios.put(signedUrl, uploadedFile, {
                     headers: {
-                        "Content-Type": uploadedFile?.type || "applicaiton/pdf"
+                        "Content-Type": uploadedFile?.type || "application/pdf",
+                    },
+                });
+
+                //  If user is logged in → save to DB
+                if (session) {
+                    const payload = { jd: jobDescription, fileName };
+                    const res2 = await axios.post(
+                        `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/upload/jd-resume`,
+                        payload,
+                        {
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${session.user.accessToken}`,
+                            },
+                        }
+                    );
+                    if (res2.data.success) {
+                        setIsUploaded(true);
+                        setSavedFileName(fileName)
+
                     }
-                })
+                } else {
+                    //  Guest → directly analyze
+                    const payload = { jd: jobDescription, fileName };
+                    const res2 = await axios.post(
+                        `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/upload/jd-resume/guest`,
+                        payload,
+                        { headers: { "Content-Type": "application/json" } }
+                    );
+                    if (res2.data.success) {
+                        setIsUploaded(true);
+                        setSavedFileName(fileName)
+                        console.log("guest-seesion-id-frontend", res2.data.guestSesssionId);
 
-                /// inner
-
-                try {
-                    const payload = {
-                        jd: jobDescription,
-                        fileName,
-                    };
-
-                    const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/jd`, payload, {
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${session?.user.accessToken}`
-                        },
-                    });
-
-                    if (response.data.success) {
-                        console.log("✅ Saved successfully:", response.data.message);
-
-                        setIsUploaded(true)
-                    } else {
-                        console.error("⚠️ Error:", response.data.error);
+                        setGuestSessionId(res2.data.guestSessionId)
                     }
-                } catch (error) {
-                    if (axios.isAxiosError(error)) {
-                        console.log("error", error);
-
-                        const message = error.response?.data.error
-                        console.log("message", message);
-
-                        // setUploadError(message)
-                    }
-                    console.log("Upload failure :", error);
                 }
 
-
-
-
-
-                // setFileName(fileName)
             }
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                console.log("error", error);
-
-                const message = error.response?.data.error
-                setUploadError(message)
+                console.error("Upload error", error.response?.data || error.message);
+                setUploadError(error.response?.data?.error || "Upload failed");
             }
-            console.log("Upload failure :", error);
         } finally {
-            setIsUploading(false)
+            setIsUploading(false);
         }
-    }
-
-
-
+    };
 
     const handleAnalyze = async () => {
+        try {
+            setIsAnalysing(true)
+            if (session) {
+                const payload = { jd: jobDescription, savedfileName };
+                const res2 = await axios.post(
+                    `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/analysis/jd-resume`,
+                    payload,
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${session.user.accessToken}`,
+                        },
+                    }
+                );
+                if (res2.data.success) {
+                    console.log(" analysis result:", res2.data.analysis);
 
+
+                }
+            } else {
+                //  Guest → directly analyze
+                const res2 = await axios.post(
+                    `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/api/analysis/guest`,
+                    { guestSessionId },
+                    { headers: { "Content-Type": "application/json" } }
+                );
+                if (res2.data.success) {
+                    console.log("Guest analysis result:", res2.data.analysis);
+                }
+            }
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.error("Upload error", error.response?.data || error.message);
+                setUploadError(error.response?.data?.error || "Anlysis failed");
+            }
+
+        } finally {
+            setIsAnalysing(false)
+        }
     };
 
 
@@ -451,7 +473,7 @@ function Main() {
 
                     <div className="text-center pt-4">
                         <Button
-                            disabled={!isUploaded}
+                            disabled={!isUploaded || isAnalysing}
                             size="xl"
                             onClick={handleAnalyze}
                             className="relative cursor-pointer overflow-hidden rounded-lg
@@ -461,13 +483,16 @@ function Main() {
                             hover:shadow-[0_0_30px_rgba(56,189,248,0.5)]
                             hover:from-cyan-600  hover:via-blue-700 hover:to-indigo-800
                             hover:border-none transition-all duration-300"
-
                         >
-                            <>
-                                <Sparkles className="w-4 h-4" />
-                                Analyze Match
-                                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
-                            </>
+                            {isAnalysing ? (
+                                <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                            ) : (
+                                <>
+                                    <Sparkles className="w-4 h-4" />
+                                    Analyze Match
+                                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                                </>
+                            )}
                         </Button>
 
 

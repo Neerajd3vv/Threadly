@@ -4,7 +4,8 @@ import express from "express"
 import helmet from "helmet"
 import authRoutes from "./routes/authRoutes"
 import uploadRoutes from "./routes/uploadRoutes"
-import jdRoutes from "./routes/jdRoutes"
+import analysisRoutes from "./routes/analysisRoutes"
+
 const app = express()
 
 app.use(helmet()) // a lib to protect against some attacks
@@ -16,7 +17,7 @@ app.disable("x-powered-by")
 
 app.use("/api/auth", authRoutes)
 app.use("/api/upload", uploadRoutes)
-app.use("/api", jdRoutes)
+app.use("/api/analysis", analysisRoutes)
 
 app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });
