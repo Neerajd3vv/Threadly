@@ -60,7 +60,7 @@ export async function jdWithFileName(req: Request, res: Response) {
         }
 
 
-        const userId = Number(req.user.id);
+        const userId = req.user.id
 
         // used transaction here
         await prisma.$transaction(async (tx) => {

@@ -14,7 +14,7 @@ datasource db {
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
+  id        String     @id @default(uuid())
   firstname String
   lastname  String?
   email     String     @unique
@@ -27,33 +27,45 @@ model User {
 }
 
 model Jd {
-  id          Int        @id @default(autoincrement())
+  id          String     @id @default(uuid())
   description String
-  userId      Int // foreign key : A column in one table that represents a primary key of another table
+  userId      String // foreign key : A column in one table that represents a primary key of another table
   user        User       @relation(fields: [userId], references: [id])
   analyses    Analysis[]
   createdAt   DateTime   @default(now())
 }
 
 model Resume {
-  id        Int        @id @default(autoincrement())
+  id        String     @id @default(uuid())
   fileName  String
-  userId    Int
+  userId    String
   user      User       @relation(fields: [userId], references: [id])
   analyses  Analysis[]
   createdAt DateTime   @default(now())
 }
 
 model Analysis {
-  id              Int      @id @default(autoincrement())
-  resumeId        Int
-  jdId            Int
-  userId          Int
-  matchScore      Float
+  id              String         @id @default(uuid())
+  resumeId        String
+  jdId            String
+  userId          String
+  status          AnalysisStatus @default(queued)
+  progress        Int            @default(0)
+  error           String?
+  matchScore      Float?
+  strengths       String[]
   missingKeywords String[]
-  suggestedEdits  String?
-  resume          Resume   @relation(fields: [resumeId], references: [id])
-  jd              Jd       @relation(fields: [jdId], references: [id])
-  user            User     @relation(fields: [userId], references: [id])
-  createdAt       DateTime @default(now())
+  recommendations String[]
+  suggestedEdits  Json?
+  resume          Resume         @relation(fields: [resumeId], references: [id])
+  jd              Jd             @relation(fields: [jdId], references: [id])
+  user            User           @relation(fields: [userId], references: [id])
+  createdAt       DateTime       @default(now())
+}
+
+enum AnalysisStatus {
+  queued
+  processing
+  completed
+  failed
 }

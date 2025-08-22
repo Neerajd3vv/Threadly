@@ -204,8 +204,16 @@ function Main() {
             }
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                console.error("Upload error", error.response?.data || error.message);
-                setUploadError(error.response?.data?.error || "Anlysis failed");
+                console.log("Upload error", error.response?.data || error.message);
+                toast.custom(() => (
+                    <div className="max-w-md w-full rounded-xl shadow-lg backdrop-blur-md 
+                      bg-gradient-to-tr from-[#000000] via-indigo-900/10 to-zinc-900/5 
+                      border border-white/10 text-white px-4 py-3">
+                        <p className="text-sm font-medium">
+                            {error.response?.data.error || "Analysis Failed"}
+                        </p>
+                    </div>
+                ), { duration: 4000 });
             }
 
         } finally {
@@ -472,6 +480,7 @@ function Main() {
 
 
                     <div className="text-center pt-4">
+
                         <Button
                             disabled={!isUploaded || isAnalysing}
                             size="xl"
@@ -487,22 +496,16 @@ function Main() {
                             {isAnalysing ? (
                                 <Loader2 className="animate-spin w-5 h-5 mr-2" />
                             ) : (
-                                <>
+                                <div className="flex items-end gap-2 ">
                                     <Sparkles className="w-4 h-4" />
-                                    Analyze Match
+                                    Start Analysis
                                     <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
-                                </>
+                                </div>
                             )}
                         </Button>
 
 
-                        {!isUploaded ? (
-                            <p className="text-stone-400 text-xs mt-3">
-                                Upload resume first
-                            </p>
-                        ) : (
-                            <p className="text-stone-400 text-xs mt-3">Ready to analyze your resume</p>
-                        )}
+
                     </div>
                 </div>
             </div>

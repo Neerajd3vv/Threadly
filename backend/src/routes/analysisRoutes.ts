@@ -1,11 +1,11 @@
 import express from "express"
-import { resumeUpload } from "../controllers/uploadControllers";
 import { guestAnalysis } from "../controllers/analysisControllers"
 import { analysis } from "../controllers/analysisControllers"
+import { authMiddleware } from "../middlewares/auth";
 
 const router = express.Router();
 
 router.post("/guest", guestAnalysis)
-router.post("/", analysis)
+router.post("/", authMiddleware, analysis)
 
 export default router;
